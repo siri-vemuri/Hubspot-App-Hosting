@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookings Leaderboard — Orbital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0b0b0e;
+  --surf:     #131318;
+  --surf2:    #1a1a22;
+  --surf3:    #21212c;
+  --border:   rgba(255,255,255,0.055);
+  --border2:  rgba(255,255,255,0.10);
+  --text:     #eeedf5;
+  --muted:    #7a7990;
+  --dim:      #42404f;
+  --sales:    #5b8df5;
+  --csm:      #22c9a0;
+  --gold:     #f0bc45;
+  --silver:   #a9a9c0;
+  --bronze:   #c07850;
+  --green:    #2ecf7e;
+  --amber:    #e89a28;
+  --red:      #e05050;
+  --fn: 'Syne', sans-serif;
+  --fm: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--fn); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+/* ── Setup ──────────────────────────────────────────────────── */
+#setup {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 2rem;
+}
+.setup-inner { width: 100%; max-width: 460px; }
+.setup-wordmark {
+  font-family: var(--fm); font-size: 10px; letter-spacing: .2em;
+  color: var(--dim); text-transform: uppercase; margin-bottom: 2.5rem;
+  display: flex; align-items: center; gap: 10px;
+}
+.setup-wordmark::after { content: ''; flex: 1; height: 1px; background: var(--border2); }
+.setup-h { font-size: 36px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; margin-bottom: 1rem; }
+.setup-h span { color: var(--sales); }
+.setup-sub { font-family: var(--fm); font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 2rem; }
+.setup-card { background: var(--surf); border: 1px solid var(--border2); border-radius: 16px; padding: 1.75rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-family: var(--fm); font-size: 9px; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; }
+.field input { background: var(--surf2); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 12px; font-family: var(--fm); font-size: 12px; color: var(--text); outline: none; transition: border-color .15s; width: 100%; }
+.field input:focus { border-color: var(--sales); }
+.setup-hint { font-family: var(--fm); font-size: 11px; color: var(--dim); line-height: 1.6; }
+.setup-hint a { color: var(--sales); text-decoration: none; }
+.setup-hint a:hover { text-decoration: underline; }
+.setup-hint code { color: var(--muted); }
+.setup-err { font-family: var(--fm); font-size: 11px; color: var(--red); display: none; line-height: 1.5; white-space: pre-wrap; }
+.btn-connect { width: 100%; padding: 13px; background: var(--sales); border: none; border-radius: 9px; color: #fff; font-family: var(--fn); font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; }
+.btn-connect:hover { opacity: .85; }
+.btn-connect:active { transform: scale(.98); }
+.btn-connect:disabled { opacity: .4; cursor: default; }
+
+/* ── App ────────────────────────────────────────────────────── */
+#app { display: none; position: relative; z-index: 1; padding: 2rem 1.5rem 4rem; max-width: 960px; margin: 0 auto; }
+
+.app-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+.app-wordmark { font-family: var(--fm); font-size: 9px; letter-spacing: .18em; color: var(--dim); text-transform: uppercase; margin-bottom: 5px; }
+.app-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+.app-ctrl { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+
+.period-tabs { display: flex; background: var(--surf); border: 1px solid var(--border2); border-radius: 8px; padding: 3px; gap: 2px; }
+.ptab { padding: 5px 14px; border-radius: 5px; font-family: var(--fm); font-size: 11px; letter-spacing: .05em; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all .15s; }
+.ptab.on { background: var(--surf2); color: var(--text); border: 1px solid var(--border2); }
+
+.btn-sm { padding: 5px 12px; border: 1px solid var(--border2); border-radius: 7px; background: transparent; color: var(--muted); font-family: var(--fm); font-size: 11px; letter-spacing: .05em; cursor: pointer; transition: all .15s; }
+.btn-sm:hover { color: var(--text); background: var(--surf); }
+
+.team-tabs { display: flex; border-bottom: 1px solid var(--border2); margin-bottom: 1.5rem; }
+.ttab { padding: 10px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; letter-spacing: .01em; }
+.ttab.on.sales { color: var(--sales); border-bottom-color: var(--sales); }
+.ttab.on.csm   { color: var(--csm);   border-bottom-color: var(--csm); }
+
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+.mc { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.125rem; }
+.mc-l { font-family: var(--fm); font-size: 9px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.mc-v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+
+.sheet-bar { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; padding: .6rem 1rem; display: flex; align-items: center; gap: 8px; margin-bottom: 1.25rem; }
+.ss-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.ss-dot.ok      { background: var(--green); }
+.ss-dot.err     { background: var(--red); }
+.ss-dot.loading { background: var(--amber); animation: pulse 1s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.ss-text { font-family: var(--fm); font-size: 11px; color: var(--muted); flex: 1; }
+.ss-reload { font-family: var(--fm); font-size: 10px; color: var(--sales); cursor: pointer; background: none; border: none; }
+.ss-reload:hover { text-decoration: underline; }
+
+.quota-bar { background: var(--surf); border: 1px solid var(--border); border-radius: 8px; padding: .6rem 1rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; gap: 8px; }
+.quota-bar-lbl { font-family: var(--fm); font-size: 9px; letter-spacing: .12em; color: var(--dim); text-transform: uppercase; }
+.quota-note { font-family: var(--fm); font-size: 11px; color: var(--muted); flex: 1; padding: 0 10px; }
+.quota-toggle { font-family: var(--fm); font-size: 10px; color: var(--sales); background: none; border: none; cursor: pointer; }
+.quota-toggle:hover { opacity: .7; }
+
+.quota-drawer { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; padding: 1.125rem; margin-bottom: 1.25rem; display: none; }
+.quota-drawer.open { display: block; }
+.qd-hd { font-family: var(--fm); font-size: 9px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: .875rem; }
+.quota-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px; }
+.qi label { display: block; font-family: var(--fm); font-size: 9px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qi-val { font-family: var(--fm); font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+.qi-sub { font-family: var(--fm); font-size: 10px; color: var(--dim); line-height: 1.4; }
+
+.board { display: flex; flex-direction: column; gap: 7px; }
+.state-msg { text-align: center; padding: 3rem 1rem; font-family: var(--fm); font-size: 12px; color: var(--muted); letter-spacing: .08em; line-height: 1.8; }
+.state-msg.err { color: var(--red); }
+
+.rc { background: var(--surf); border: 1px solid var(--border); border-radius: 13px; padding: 1rem 1.25rem; transition: border-color .2s, transform .15s; animation: rise .3s ease both; }
+@keyframes rise { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.rc:hover { border-color: var(--border2); transform: translateY(-1px); }
+.rc.r1 { border-left: 3px solid var(--gold); }
+.rc.r2 { border-left: 3px solid var(--silver); }
+.rc.r3 { border-left: 3px solid var(--bronze); }
+
+.rh { display: flex; align-items: center; gap: 11px; margin-bottom: 10px; }
+.rk { font-family: var(--fm); font-size: 12px; min-width: 32px; color: var(--dim); letter-spacing: .05em; }
+.rk.g1 { color: var(--gold); }
+.rk.g2 { color: var(--silver); }
+.rk.g3 { color: var(--bronze); }
+.av { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--fm); font-size: 11px; font-weight: 500; }
+.rname { font-size: 14px; font-weight: 600; flex: 1; letter-spacing: -.01em; }
+.badges { display: flex; gap: 5px; align-items: center; }
+.badge { font-family: var(--fm); font-size: 9px; letter-spacing: .07em; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; }
+.badge-team { background: var(--surf3); color: var(--muted); }
+.badge-ramp { background: rgba(232,154,40,.14); color: var(--amber); }
+.rarr { font-family: var(--fm); font-size: 15px; font-weight: 500; }
+
+.rs-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; margin-bottom: 10px; }
+.rs { font-family: var(--fm); font-size: 9px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; }
+.rs span { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; letter-spacing: 0; }
+
+.pb { height: 2px; background: rgba(255,255,255,.05); border-radius: 2px; overflow: hidden; }
+.pf { height: 100%; border-radius: 2px; transition: width .6s cubic-bezier(.23,1,.32,1); }
+.pf.g { background: var(--green); }
+.pf.a { background: var(--amber); }
+.pf.r { background: var(--red); }
+.att-row { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+.att-pct { font-family: var(--fm); font-size: 10px; font-weight: 500; letter-spacing: .05em; }
+.att-pct.g    { color: var(--green); }
+.att-pct.a    { color: var(--amber); }
+.att-pct.r    { color: var(--red);   }
+.att-pct.none { color: var(--dim);   }
+.att-date { font-family: var(--fm); font-size: 9px; color: var(--dim); letter-spacing: .05em; }
+
+.footer { margin-top: 1.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.lu { font-family: var(--fm); font-size: 10px; color: var(--dim); letter-spacing: .06em; }
+.btn-disc { font-family: var(--fm); font-size: 10px; color: var(--dim); cursor: pointer; letter-spacing: .06em; background: none; border: none; }
+.btn-disc:hover { color: var(--muted); }
+
+@media(max-width:600px) {
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .rs-row  { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ SETUP ════════ -->
+<div id="setup">
+  <div class="setup-inner">
+    <div class="setup-wordmark">Orbital · Revenue Ops</div>
+    <h1 class="setup-h">Bookings<br><span>Leaderboard</span></h1>
+    <p class="setup-sub">// HubSpot + Google Sheet · live quota tracking</p>
+    <div class="setup-card">
+      <div class="field">
+        <label>HubSpot Private App Token</label>
+        <input type="password" id="tokenInput" placeholder="pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Google Sheet Published CSV URL</label>
+        <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…/pub?output=csv">
+      </div>
+      <p class="setup-hint">
+        <strong style="color:var(--muted)">Token:</strong>
+        <a href="https://app.hubspot.com/private-apps" target="_blank">HubSpot → Settings → Private Apps</a>
+        — needs <code>crm.objects.deals.read</code> scope.<br><br>
+        <strong style="color:var(--muted)">Sheet URL:</strong>
+        File → Share → Publish to web → your roster tab → CSV format → Copy link.
+      </p>
+      <div class="setup-err" id="setupErr"></div>
+      <button class="btn-connect" id="connectBtn" onclick="connect()">Connect →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ APP ════════ -->
+<div id="app">
+  <div class="app-header">
+    <div>
+      <div class="app-wordmark">Orbital · Revenue Ops</div>
+      <div class="app-title">Bookings Leaderboard</div>
+    </div>
+    <div class="app-ctrl">
+      <div class="period-tabs">
+        <button class="ptab on" onclick="setPeriod('cq')">Current quarter</button>
+        <button class="ptab"    onclick="setPeriod('fy')">FY to date</button>
+      </div>
+      <button class="btn-sm" onclick="loadAll()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="team-tabs">
+    <button class="ttab on sales" onclick="setTeam('sales')">Sales</button>
+    <button class="ttab csm"      onclick="setTeam('csm')">Customer Success</button>
+  </div>
+
+  <div class="sheet-bar">
+    <div class="ss-dot loading" id="ssDot"></div>
+    <div class="ss-text" id="ssText">Loading quota data from Google Sheet…</div>
+    <button class="ss-reload" onclick="reloadSheet()">Reload sheet</button>
+  </div>
+
+  <div class="metrics">
+    <div class="mc"><div class="mc-l">Net New ARR</div><div class="mc-v" id="mArr">—</div></div>
+    <div class="mc"><div class="mc-l">Deals closed</div><div class="mc-v" id="mDeals">—</div></div>
+    <div class="mc"><div class="mc-l">Pipeline created</div><div class="mc-v" id="mPipe">—</div></div>
+  </div>
+
+  <div class="quota-bar">
+    <span class="quota-bar-lbl">Quotas</span>
+    <span class="quota-note" id="quotaNote">Calculated from sheet · ramp-adjusted · salary year <span id="salYearLbl"></span></span>
+    <button class="quota-toggle" id="quotaToggleBtn" onclick="toggleQuotaDrawer()">▸ Breakdown</button>
+  </div>
+  <div class="quota-drawer" id="quotaDrawer">
+    <div class="qd-hd">Quota breakdown — <span id="qPeriodLbl"></span></div>
+    <div class="quota-grid" id="quotaGrid"></div>
+  </div>
+
+  <div class="board" id="board">
+    <div class="state-msg">Loading from HubSpot…</div>
+  </div>
+
+  <div class="footer">
+    <div class="lu" id="lu"></div>
+    <button class="btn-disc" onclick="disconnect()">× Disconnect</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════ CONFIG ═══════════════════════════════
+
+const PIPELINES = {
+  sales: ["default"],
+  csm:   ["867385095"]
+};
+const CW_STAGES = ["closedwon", "1298060195"];
+
+const TEAM_MAP = {
+  "73585430": { board: "sales", label: "Biz Dev UK" },
+  "73585470": { board: "sales", label: "Biz Dev US" },
+  "65990112": { board: "sales", label: "UK Residential" },
+  "2025409":  { board: "csm",   label: "CS" }
+};
+const BOARD_TEAMS = {
+  sales: ["73585430","73585470","65990112"],
+  csm:   ["2025409"]
+};
+
+// ═══════════════════════ STATE ════════════════════════════════
+
+let HS_TOKEN  = "", SHEET_URL = "";
+let period    = "cq", teamView = "sales";
+let sheetReps  = {};           // hubspot owner id (string) → rep object
+let closedDeals = [], pipeDeals = [];
+
+const PALETTE = ["#5b8df5","#22c9a0","#e8b028","#e85878","#50caf0","#c07850","#8b5cf6","#2ecf7e","#f08c28"];
+const _colors = {};
+let _ci = 0;
+const colorFor = id => { if (!_colors[id]) _colors[id] = PALETTE[_ci++ % PALETTE.length]; return _colors[id]; };
+
+// ═══════════════════════ DATE HELPERS ═════════════════════════
+
+function fyStart(d = new Date()) {
+  const y = d.getMonth() >= 4 ? d.getFullYear() : d.getFullYear() - 1;
+  return new Date(y, 4, 1);
+}
+function cqStart(d = new Date()) {
+  const m = d.getMonth();
+  if (m >= 4 && m <= 6)  return new Date(d.getFullYear(), 4, 1);
+  if (m >= 7 && m <= 9)  return new Date(d.getFullYear(), 7, 1);
+  if (m >= 10)           return new Date(d.getFullYear(), 10, 1);
+  return new Date(d.getFullYear(), 1, 1);  // Feb = Q4
+}
+const periodStart = () => period === "cq" ? cqStart() : fyStart();
+const periodEnd   = () => new Date();
+const periodDays  = () => Math.max(1, (periodEnd() - periodStart()) / 86400000);
+
+// ═══════════════════════ QUOTA LOGIC ══════════════════════════
+
+/**
+ * Salary year to use on a given date.
+ * New salary kicks in Feb 1 (Q4 start). Jan still uses prior year.
+ *   Jan     → year - 1
+ *   Feb–Dec → year
+ */
+function salaryYear(d = new Date()) {
+  return d.getMonth() === 0 ? d.getFullYear() - 1 : d.getFullYear();
+}
+
+/**
+ * Look up the rep's salary for the relevant calendar year.
+ * Walks back up to 4 years to handle missing columns gracefully.
+ */
+function getSalary(rep, d = new Date()) {
+  const target = salaryYear(d);
+  for (let y = target; y >= target - 4; y--) {
+    const v = rep[`${y} annual salary`];
+    if (v && +v > 0) return +v;
+  }
+  return 0;
+}
+
+/**
+ * Ramp % based on weeks employed at the midpoint of the current period.
+ * Using midpoint avoids hard cliffs at period boundaries.
+ */
+function rampPct(startDate) {
+  if (!startDate || isNaN(startDate)) return 1;
+  const mid  = new Date((periodStart().getTime() + periodEnd().getTime()) / 2);
+  const wks  = (mid - startDate) / (7 * 86400000);
+  if (wks < 10) return 0;
+  if (wks < 14) return 0.25;
+  if (wks < 18) return 0.50;
+  return 1;
+}
+
+/**
+ * Salary multiplier.
+ * Residential-only: always 4×.
+ * Others: 4× for first 12 months, 5× from month 13.
+ */
+function salaryMult(rep) {
+  if (!rep) return 0;
+  const isResidential = (rep.products || "").toLowerCase().trim() === "orbital residential";
+  if (isResidential) return 4;
+  const tenureMonths = (new Date() - rep.startDate) / (30.44 * 86400000);
+  return tenureMonths >= 12 ? 5 : 4;
+}
+
+function annualQuota(rep)  { return getSalary(rep) * salaryMult(rep) * rampPct(rep.startDate); }
+function periodQuota(rep)  { return annualQuota(rep) * (periodDays() / 365); }
+
+// ═══════════════════════ FORMATTING ══════════════════════════
+
+function fmt(n) {
+  if (!n || isNaN(n) || n === 0) return "—";
+  if (n >= 1e6) return "$" + (n/1e6).toFixed(2) + "M";
+  if (n >= 1e3) return "$" + Math.round(n/1e3) + "k";
+  return "$" + Math.round(n);
+}
+const initials = name => (name||"??").split(/\s+/).map(w=>w[0]).join("").toUpperCase().slice(0,2);
+
+// ═══════════════════════ SETUP / AUTH ═════════════════════════
+
+async function connect() {
+  const tok = document.getElementById("tokenInput").value.trim();
+  const url = document.getElementById("sheetUrl").value.trim();
+  const err = document.getElementById("setupErr");
+  const btn = document.getElementById("connectBtn");
+  err.style.display = "none";
+  if (!tok) { err.textContent = "Please enter your HubSpot private app token."; err.style.display="block"; return; }
+  if (!url) { err.textContent = "Please enter your Google Sheet published CSV URL."; err.style.display="block"; return; }
+
+  btn.textContent = "Connecting…"; btn.disabled = true;
+
+  try {
+    const r = await fetch("https://api.hubapi.com/crm/v3/objects/deals?limit=1&properties=dealname", {
+      headers: { Authorization: "Bearer " + tok }
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status + " — check token has crm.objects.deals.read scope");
+    HS_TOKEN = tok; SHEET_URL = url;
+    document.getElementById("setup").style.display = "none";
+    document.getElementById("app").style.display   = "block";
+    document.getElementById("salYearLbl").textContent = salaryYear();
+    await loadAll();
+  } catch(e) {
+    err.textContent = "HubSpot connection failed:\n" + e.message;
+    err.style.display = "block";
+    btn.textContent = "Connect →"; btn.disabled = false;
+  }
+}
+
+function disconnect() {
+  HS_TOKEN = ""; SHEET_URL = "";
+  sheetReps = {};
+  closedDeals = []; pipeDeals = [];
+  document.getElementById("app").style.display   = "none";
+  document.getElementById("setup").style.display = "flex";
+  document.getElementById("tokenInput").value    = "";
+  document.getElementById("sheetUrl").value      = "";
+  const btn = document.getElementById("connectBtn");
+  btn.textContent = "Connect →"; btn.disabled = false;
+}
+
+// ═══════════════════════ DATA LOADING ════════════════════════
+
+async function loadAll() {
+  document.getElementById("board").innerHTML = '<div class="state-msg">Loading from HubSpot…</div>';
+  setSheetStatus("loading", "Loading quota data…");
+  await Promise.all([loadSheet(), loadDeals()]);
+  document.getElementById("lu").textContent = "Updated " + new Date().toLocaleTimeString();
+  document.getElementById("salYearLbl").textContent = salaryYear();
+  renderAll();
+}
+
+async function reloadSheet() {
+  setSheetStatus("loading", "Reloading…");
+  await loadSheet();
+  renderAll();
+}
+
+/* Google Sheet CSV */
+async function loadSheet() {
+  sheetReps = {};
+  try {
+    const sep = SHEET_URL.includes("?") ? "&" : "?";
+    const r   = await fetch(SHEET_URL + sep + "_cb=" + Date.now());
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const csv = await r.text();
+    parseSheet(csv);
+    const n = Object.keys(sheetReps).length;
+    setSheetStatus("ok", `Sheet loaded · ${n} rep${n!==1?"s":""} · salary year ${salaryYear()}`);
+  } catch(e) {
+    setSheetStatus("err", "Could not load sheet — quotas unavailable. " + e.message);
+  }
+}
+
+function parseSheet(csv) {
+  const rows = parseCSV(csv);
+  if (rows.length < 2) return;
+  const hdr = rows[0].map(h => h.toLowerCase().trim());
+
+  const ci = name => hdr.indexOf(name);
+  const nameCol   = ci("full name");
+  const ownerCol  = ci("hubspot user id");  // primary key — direct owner id match
+  const emailCol  = ci("email");            // fallback
+  const startCol  = ci("start date");
+  const prodCol   = ci("products supported");
+
+  // Dynamically find "[year] annual salary" columns
+  const salCols = {};
+  hdr.forEach((h, i) => {
+    const m = h.match(/^(\d{4})\s+annual\s+salary$/);
+    if (m) salCols[m[1]] = i;
+  });
+
+  for (let i = 1; i < rows.length; i++) {
+    const row     = rows[i];
+    // Use HubSpot User ID as primary key; fall back to email if blank
+    const ownerId = ownerCol >= 0 ? (row[ownerCol] || "").trim() : "";
+    const email   = emailCol >= 0 ? (row[emailCol] || "").toLowerCase().trim() : "";
+    const key     = ownerId || email;
+    if (!key) continue;
+
+    const salaries = {};
+    Object.entries(salCols).forEach(([yr, colIdx]) => {
+      const raw = (row[colIdx] || "").replace(/[£$€,\s]/g, "");
+      if (raw && !isNaN(+raw)) salaries[yr + " annual salary"] = +raw;
+    });
+
+    const startRaw  = startCol >= 0 ? (row[startCol] || "").trim() : "";
+    const startDate = startRaw ? new Date(startRaw) : null;
+
+    sheetReps[key] = {
+      name:      nameCol >= 0 ? (row[nameCol] || "").trim() : "",
+      products:  prodCol >= 0 ? (row[prodCol] || "").trim() : "",
+      startDate: startDate && !isNaN(startDate) ? startDate : null,
+      ownerId,
+      email,
+      ...salaries
+    };
+  }
+}
+
+/* Minimal RFC 4180 CSV parser */
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], nx = text[i+1];
+    if (inQ) {
+      if (c==='"'&&nx==='"') { cell+='"'; i++; }
+      else if (c==='"') inQ = false;
+      else cell += c;
+    } else {
+      if (c==='"') inQ = true;
+      else if (c===',') { row.push(cell); cell=""; }
+      else if (c==='\n') { row.push(cell); rows.push(row); row=[]; cell=""; }
+      else if (c!=='\r') cell += c;
+    }
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+/* HubSpot Deals */
+async function hsSearch(body) {
+  const r = await fetch("https://api.hubapi.com/crm/v3/objects/deals/search", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + HS_TOKEN, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error("HubSpot " + r.status);
+  return r.json();
+}
+
+async function fetchAll(filterGroups, props) {
+  let all = [], after;
+  while (true) {
+    const body = { filterGroups, properties: props, limit: 200 };
+    if (after) body.after = after;
+    const data = await hsSearch(body);
+    all = all.concat(data.results || []);
+    if (!data.paging?.next?.after) break;
+    after = data.paging.next.after;
+  }
+  return all;
+}
+
+async function loadDeals() {
+  const fyS  = fyStart().toISOString();
+  const allP = [...PIPELINES.sales, ...PIPELINES.csm];
+  const props = ["dealname","net_new_arr_in_company_currency","amount_in_home_currency",
+                 "closedate","createdate","dealstage","pipeline","hubspot_owner_id","hubspot_team_id"];
+  try {
+    [closedDeals, pipeDeals] = await Promise.all([
+      fetchAll([{ filters:[
+        {propertyName:"dealstage", operator:"IN",  values:CW_STAGES},
+        {propertyName:"pipeline",  operator:"IN",  values:allP},
+        {propertyName:"closedate", operator:"GTE", value:fyS}
+      ]}], props),
+      fetchAll([{ filters:[
+        {propertyName:"pipeline",   operator:"IN",  values:allP},
+        {propertyName:"createdate", operator:"GTE", value:fyS}
+      ]}], props)
+    ]);
+  } catch(e) {
+    document.getElementById("board").innerHTML =
+      `<div class="state-msg err">Failed to load deals: ${e.message}</div>`;
+  }
+}
+
+// ═══════════════════════ MATCH OWNERS → SHEET ════════════════
+
+function findSheetRep(ownerId) {
+  // Primary: direct HubSpot Owner ID match (from "HubSpot User ID" column)
+  if (sheetReps[ownerId]) return sheetReps[ownerId];
+  // Fallback: match by email key (for rows where owner ID column was blank)
+  return Object.values(sheetReps).find(sr => sr.ownerId === ownerId) || null;
+}
+
+// ═══════════════════════ RENDER ══════════════════════════════
+
+function renderAll() {
+  renderMetrics();
+  renderBoard();
+  const drawer = document.getElementById("quotaDrawer");
+  if (drawer.classList.contains("open")) renderQuotaBreakdown();
+}
+
+function boardOwners() {
+  const teamIds   = BOARD_TEAMS[teamView];
+  const pipelines = PIPELINES[teamView];
+  // Build owner objects directly from deal data + sheet
+  const seen = {};
+  [...closedDeals, ...pipeDeals].forEach(d => {
+    const p = d.properties || {};
+    if (!pipelines.includes(p.pipeline) || !teamIds.includes(p.hubspot_team_id)) return;
+    const oid = p.hubspot_owner_id;
+    if (!oid || seen[oid]) return;
+    const sr = findSheetRep(oid);
+    const tid = p.hubspot_team_id;
+    seen[oid] = {
+      ownerId:   oid,
+      name:      sr?.name || "Rep " + oid.slice(-4),
+      teamLabel: TEAM_MAP[tid]?.label || "",
+      boardKey:  TEAM_MAP[tid]?.board || null
+    };
+  });
+  return Object.values(seen);
+}
+
+function renderMetrics() {
+  const start = periodStart();
+  const pipes = PIPELINES[teamView];
+  const teams = BOARD_TEAMS[teamView];
+
+  const cl = closedDeals.filter(d => {
+    const p = d.properties||{};
+    return pipes.includes(p.pipeline) && teams.includes(p.hubspot_team_id) && new Date(p.closedate) >= start;
+  });
+  const cr = pipeDeals.filter(d => {
+    const p = d.properties||{};
+    return pipes.includes(p.pipeline) && teams.includes(p.hubspot_team_id) && new Date(p.createdate) >= start;
+  });
+
+  document.getElementById("mArr").textContent   = fmt(cl.reduce((s,d)=>s+ +(d.properties?.net_new_arr_in_company_currency||0),0));
+  document.getElementById("mDeals").textContent = cl.length;
+  document.getElementById("mPipe").textContent  = fmt(cr.reduce((s,d)=>s+ +(d.properties?.amount_in_home_currency||0),0));
+}
+
+function renderQuotaBreakdown() {
+  const owners = boardOwners();
+  const pDays  = periodDays();
+  document.getElementById("qPeriodLbl").textContent = period==="cq" ? "current quarter" : "FY to date";
+
+  document.getElementById("quotaGrid").innerHTML = owners.map(owner => {
+    const sr = findSheetRep(owner.ownerId);
+    if (!sr || !sr.startDate) {
+      return `<div class="qi"><label title="${owner.name}">${owner.name}</label>
+        <div class="qi-val" style="color:var(--dim)">—</div>
+        <div class="qi-sub">No sheet match</div></div>`;
+    }
+    const salary  = getSalary(sr);
+    const mult    = salaryMult(sr);
+    const ramp    = rampPct(sr.startDate);
+    const annual  = salary * mult * ramp;
+    const pq      = annual * (pDays / 365);
+    const rampTxt = ramp < 1 ? ` · ${Math.round(ramp*100)}% ramp` : "";
+    const isRes   = (sr.products||"").toLowerCase().trim() === "orbital residential";
+    const multTxt = isRes ? "4× (residential)" : mult + "×";
+    return `<div class="qi">
+      <label title="${owner.name}">${owner.name}</label>
+      <div class="qi-val">${fmt(pq)}</div>
+      <div class="qi-sub">${fmt(salary)} · ${multTxt}${rampTxt}</div>
+      <div class="qi-sub">Annual: ${fmt(annual)}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderBoard() {
+  const owners = boardOwners();
+  const start  = periodStart();
+  const pipes  = PIPELINES[teamView];
+  const pDays  = periodDays();
+
+  if (!owners.length) {
+    document.getElementById("board").innerHTML =
+      '<div class="state-msg">No deal activity found for this team in the selected period.</div>';
+    return;
+  }
+
+  const data = owners.map(owner => {
+    const cl = closedDeals.filter(d => {
+      const p = d.properties||{};
+      return p.hubspot_owner_id === owner.ownerId && pipes.includes(p.pipeline) && new Date(p.closedate) >= start;
+    });
+    const cr = pipeDeals.filter(d => {
+      const p = d.properties||{};
+      return p.hubspot_owner_id === owner.ownerId && pipes.includes(p.pipeline) && new Date(p.createdate) >= start;
+    });
+
+    const arr  = cl.reduce((s,d)=>s+ +(d.properties?.net_new_arr_in_company_currency||0),0);
+    const pipe = cr.reduce((s,d)=>s+ +(d.properties?.amount_in_home_currency||0),0);
+
+    const sr   = findSheetRep(owner.ownerId);
+    const pq   = sr?.startDate ? periodQuota(sr) : 0;
+    const att  = pq > 0 ? arr / pq * 100 : null;
+    const ramp = sr?.startDate ? rampPct(sr.startDate) : null;
+
+    return { ...owner, arr, deals: cl.length, pipe, pq, att, ramp };
+  }).sort((a,b) => b.arr - a.arr);
+
+  const accent   = teamView === "sales" ? "var(--sales)" : "var(--csm)";
+  const medals   = ["r1","r2","r3"];
+  const rankTxt  = ["1st","2nd","3rd"];
+  const rankCls  = ["g1","g2","g3"];
+  const today    = new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+
+  document.getElementById("board").innerHTML = data.map((rep, i) => {
+    const medal = medals[i]||"";
+    const rk    = rankTxt[i]||`${i+1}th`;
+    const rkCls = rankCls[i]||"";
+
+    const pct    = rep.att !== null ? Math.min(Math.round(rep.att), 100) : 0;
+    const pfCls  = rep.att === null ? "" : rep.att >= 90 ? "g" : rep.att >= 60 ? "a" : "r";
+    const attCls = rep.att === null ? "none" : rep.att >= 90 ? "g" : rep.att >= 60 ? "a" : "r";
+    const attStr = rep.att !== null ? Math.round(rep.att) + "% of quota" : "no quota data";
+
+    const rampBadge = rep.ramp !== null && rep.ramp < 1
+      ? `<span class="badge badge-ramp">${Math.round(rep.ramp*100)}% ramp</span>` : "";
+
+    return `
+    <div class="rc ${medal}" style="animation-delay:${i*45}ms">
+      <div class="rh">
+        <div class="rk ${rkCls}">${rk}</div>
+        <div class="av" style="background:${colorFor(rep.ownerId)}1a;color:${colorFor(rep.ownerId)}">${initials(rep.name)}</div>
+        <div class="rname">${rep.name}</div>
+        <div class="badges">
+          <span class="badge badge-team">${rep.teamLabel}</span>
+          ${rampBadge}
+        </div>
+        <div class="rarr" style="color:${i===0?accent:"var(--text)"}">${fmt(rep.arr)}</div>
+      </div>
+      <div class="rs-row">
+        <div class="rs">Net New ARR<span>${fmt(rep.arr)}</span></div>
+        <div class="rs">Deals closed<span>${rep.deals}</span></div>
+        <div class="rs">Pipeline created<span>${fmt(rep.pipe)}</span></div>
+        <div class="rs">Period quota<span>${rep.pq ? fmt(rep.pq) : "—"}</span></div>
+      </div>
+      <div class="pb"><div class="pf ${pfCls}" style="width:${pct}%"></div></div>
+      <div class="att-row">
+        <div class="att-pct ${attCls}">${attStr}</div>
+        <div class="att-date">${period==="cq"?"CQ":"FY"} · ${today}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ═══════════════════════ CONTROLS ════════════════════════════
+
+function setPeriod(p) {
+  period = p;
+  document.querySelectorAll(".ptab").forEach((t,i) =>
+    t.classList.toggle("on",(i===0&&p==="cq")||(i===1&&p==="fy")));
+  if (closedDeals.length) renderAll(); else loadAll();
+}
+function setTeam(t) {
+  teamView = t;
+  document.querySelectorAll(".ttab").forEach((el,i) =>
+    el.classList.toggle("on",(i===0&&t==="sales")||(i===1&&t==="csm")));
+  renderAll();
+}
+function toggleQuotaDrawer() {
+  const d = document.getElementById("quotaDrawer");
+  const b = document.getElementById("quotaToggleBtn");
+  const open = d.classList.toggle("open");
+  b.textContent = open ? "▾ Breakdown" : "▸ Breakdown";
+  if (open) renderQuotaBreakdown();
+}
+function setSheetStatus(state, msg) {
+  document.getElementById("ssDot").className  = "ss-dot " + state;
+  document.getElementById("ssText").textContent = msg;
+}
+</script>
+</body>
+</html>
